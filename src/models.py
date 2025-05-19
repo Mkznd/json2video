@@ -55,16 +55,20 @@ class SplitItem(ClipBase):
         top_path = download_file(self.top_url)
         if final_size is not None:
             W, H = final_size
-            top = ImageClip(top_path)
+            top = ImageClip(top_path).cropped(x1=0, y1=0, x2=W, y2=H // 2)
         else:
             top = ImageClip(top_path)
             W, H = top.size
-        # load & resize top
+            top = top.cropped(x1=0, y1=0, x2=W, y2=H // 2)
 
-        top = top.with_duration(self.duration).resized((W, H // 2))
+        top = top.with_duration(self.duration)
         # load & resize bottom
         bot_path = download_file(self.bot_url)
-        bot = ImageClip(bot_path).with_duration(self.duration).resized((W, H // 2))
+        bot = (
+            ImageClip(bot_path)
+            .with_duration(self.duration)
+            .cropped(x1=0, y1=0, x2=W, y2=H // 2)
+        )
         # stack vertically
         return clips_array([[top], [bot]], bg_color=(0, 0, 0)).with_duration(
             self.duration
