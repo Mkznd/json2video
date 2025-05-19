@@ -20,7 +20,7 @@ def register_effect(name):
 
 @register_effect("fadein")
 def fadein(clip: Clip, value: float):
-    return clip.with_effects([vfx.FadeIn(value)])
+    return clip.with_effects([vfx.CrossFadeIn(value)])
 
 
 @register_effect("fadeout")
@@ -40,4 +40,4 @@ def rotate(clip: Clip, value: float):
 
 @register_effect("slidein")
 def slidein(clip: Clip, value: float):
-    return clip.with_effects([vfx.SlideIn(duration=value, side="left")])
+    return clip.with_effects([vfx.SlideIn(duration=value, side="top")])

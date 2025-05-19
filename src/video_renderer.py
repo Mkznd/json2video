@@ -2,8 +2,31 @@ import tempfile
 import requests
 from moviepy import *
 from src.effects import EFFECT_REGISTRY
-from src.models import VideoRequest, TextOverlay
+from src.models import VideoRequest, TextOverlay, TransitionType, Transition
 from src.utils import download_file
+
+
+def compose_with_transition(clips, transition: Transition):
+    # 1) keep first clip as‐is
+    final_clips = []
+
+    # 2) apply transition to each subsequent clip
+    for i, clip in enumerate(clips):
+        match transition.type:
+            case TransitionType.CROSSFADE:
+                clip = clip.with_effects([vfx.CrossFadeIn(transition.duration)])
+            case TransitionType.SLIDE:
+                clip = clip.with_effects(
+                    [vfx.SlideIn(duration=transition.duration, side="top")]
+                )
+            case _:
+                raise ValueError(f"Unknown transition type: {transition.type}")
+        final_clips.append(clip)
+
+    # 3) concatenate so that each clip overlaps the previous by `duration` seconds
+    return concatenate_videoclips(
+        final_clips, method="compose", padding=-transition.duration
+    )
 
 
 def add_text_overlays(base_clip, overlays: list[TextOverlay]):
@@ -20,7 +43,7 @@ def create_video(config: VideoRequest, output_path: str):
     for item in config.timeline:
         clips.append(item.compile())
 
-    base_clip = concatenate_videoclips(clips, method="compose")
+    base_clip = compose_with_transition(clips, config.transition)
 
     if config.text_overlays:
         base_clip = add_text_overlays(base_clip, config.text_overlays)

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from enum import Enum
 
 from moviepy import ImageClip, clips_array, TextClip
 from pydantic import BaseModel, HttpUrl, Field
@@ -8,12 +9,21 @@ from src.effects import EFFECT_REGISTRY
 from src.utils import download_file
 
 
+class TransitionType(str, Enum):
+    CROSSFADE = "crossfade"
+    SLIDE = "slide"
+    BLINK = "blink"
+
+
+class Transition(BaseModel):
+    type: TransitionType = TransitionType.CROSSFADE
+    duration: float = 0.5
+
+
 class Effects(BaseModel):
-    fadein: Optional[float] = None
-    fadeout: Optional[float] = None
     zoom: Optional[float] = None
     rotate: Optional[float] = None
-    slidein: Optional[int] = None
+    slidein: Optional[float] = None
 
 
 class ClipBase(BaseModel):
@@ -112,6 +122,7 @@ class TextOverlay(BaseModel):
 class VideoRequest(BaseModel):
     timeline: List[ClipItem]
     audio: Optional[HttpUrl] = None
+    transition: Optional[Transition] = Field(default_factory=Transition)
     text_overlays: List[TextOverlay] = Field(default_factory=list)
 
 
