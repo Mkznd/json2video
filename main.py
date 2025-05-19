@@ -1,7 +1,12 @@
+import uuid
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
+
+from settings import settings
 from src.models import VideoRequest
 from src.video_renderer import create_video
+from google.cloud import storage
 import tempfile
 
 app = FastAPI()
@@ -11,12 +16,14 @@ app = FastAPI()
 def render_video(payload: VideoRequest):
     tmp_file = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
     output_path = tmp_file.name
-
+    filename = f"{uuid.uuid4().hex}.mp4"
     try:
         create_video(payload, output_path)
-        return FileResponse(
-            path=output_path, filename="video.mp4", media_type="video/mp4"
-        )
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(settings.bucket_name)
+        blob = bucket.blob(filename)
+        blob.upload_from_filename(output_path)
+        return blob.public_url
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
