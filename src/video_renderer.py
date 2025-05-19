@@ -38,11 +38,7 @@ def add_text_overlays(base_clip, overlays: list[TextOverlay]):
 
 
 def create_video(config: VideoRequest, output_path: str):
-    clips = []
-
-    for item in config.timeline:
-        clips.append(item.compile())
-
+    clips = [item.compile() for item in config.timeline]
     base_clip = compose_with_transition(clips, config.transition)
 
     if config.text_overlays:
@@ -50,7 +46,11 @@ def create_video(config: VideoRequest, output_path: str):
 
     if config.audio:
         audio_path = download_file(config.audio)
-        audio = AudioFileClip(audio_path).subclipped(end_time=base_clip.duration)
+        audio = (
+            AudioFileClip(audio_path)
+            .with_effects([afx.AudioLoop(duration=base_clip.duration * 2)])
+            .subclipped(end_time=base_clip.duration)
+        )
         base_clip = base_clip.with_audio(audio)
 
     base_clip.write_videofile(output_path, fps=24)
