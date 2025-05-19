@@ -1,5 +1,11 @@
+from abc import abstractmethod
+
+from moviepy import ImageClip, clips_array, TextClip
 from pydantic import BaseModel, HttpUrl, Field
-from typing import List, Optional
+from typing import List, Optional, Union, Literal, override
+
+from src.effects import EFFECT_REGISTRY
+from src.utils import download_file
 
 
 class Effects(BaseModel):
@@ -10,22 +16,96 @@ class Effects(BaseModel):
     slidein: Optional[int] = None
 
 
-class ImageItem(BaseModel):
-    url: HttpUrl
+class ClipBase(BaseModel):
+    type: Literal["image", "split"]
     duration: float
     effects: Optional[Effects] = None
+
+    @abstractmethod
+    def compile(self):
+        pass
+
+    def apply_effects(self, clip, effects):
+        if self.effects:
+            for effect_name, value in self.effects.model_dump().items():
+                if value is not None and effect_name in EFFECT_REGISTRY:
+                    clip = EFFECT_REGISTRY[effect_name](clip, value)
+        return clip
+
+
+class ImageItem(ClipBase):
+    type: Literal["image"] = "image"
+    url: HttpUrl
+
+    @override
+    def compile(self) -> ImageClip:
+        img_path = download_file(self.url)
+        clip = ImageClip(img_path).with_duration(self.duration)
+        if self.effects:
+            clip = self.apply_effects(clip, self.effects)
+        return clip
+
+
+class SplitItem(ClipBase):
+    type: Literal["split"] = "split"
+    top_url: HttpUrl
+    bot_url: HttpUrl
+
+    def make_split_screen(self, final_size: tuple[int, int] | None = None) -> ImageClip:
+        top_path = download_file(self.top_url)
+        if final_size is not None:
+            W, H = final_size
+            top = ImageClip(top_path)
+        else:
+            top = ImageClip(top_path)
+            W, H = top.size
+        # load & resize top
+
+        top = top.with_duration(self.duration).resized((W, H // 2))
+        # load & resize bottom
+        bot_path = download_file(self.bot_url)
+        bot = ImageClip(bot_path).with_duration(self.duration).resized((W, H // 2))
+        # stack vertically
+        return clips_array([[top], [bot]], bg_color=(0, 0, 0)).with_duration(
+            self.duration
+        )
+
+    @override
+    def compile(self) -> ImageClip:
+        clip = self.make_split_screen()
+        if self.effects:
+            clip = self.apply_effects(clip, self.effects)
+        return clip
+
+
+ClipItem = ImageItem | SplitItem
 
 
 class TextOverlay(BaseModel):
     text: str
     start: float
-    end: float
+    end: float | None = None
     position: Optional[str] = "center"
     fontsize: Optional[int] = 32
     color: Optional[str] = "white"
 
+    def compile(self, base_clip: ImageClip) -> ImageClip:
+        txt = TextClip(
+            font="fonts/Impact.ttf",
+            text=self.text,
+            font_size=self.fontsize,
+            color=self.color,
+            text_align="center",
+            method="caption",
+            size=(base_clip.w, base_clip.h),
+        )
+
+        return txt.with_start(self.start).with_duration(
+            (self.end - self.start) if self.end else base_clip.duration
+        )
+
 
 class VideoRequest(BaseModel):
-    images: List[ImageItem]
+    timeline: List[ClipItem]
     audio: Optional[HttpUrl] = None
     text_overlays: List[TextOverlay] = Field(default_factory=list)
