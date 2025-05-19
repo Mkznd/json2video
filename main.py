@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from settings import settings
-from src.models import VideoRequest
+from src.models import VideoRequest, VideoResponse
 from src.video_renderer import create_video
 from google.cloud import storage
 import tempfile
@@ -23,7 +23,7 @@ def render_video(payload: VideoRequest):
         bucket = storage_client.bucket(settings.bucket_name)
         blob = bucket.blob(filename)
         blob.upload_from_filename(output_path)
-        return blob.public_url
+        return VideoResponse(url=blob.public_url)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:

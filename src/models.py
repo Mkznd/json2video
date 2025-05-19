@@ -109,3 +109,7 @@ class VideoRequest(BaseModel):
     timeline: List[ClipItem]
     audio: Optional[HttpUrl] = None
     text_overlays: List[TextOverlay] = Field(default_factory=list)
+
+
+class VideoResponse(BaseModel):
+    url: HttpUrl
