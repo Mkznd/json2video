@@ -62,23 +62,24 @@ class SplitItem(ClipBase):
     bot_url: HttpUrl
 
     def make_split_screen(self, final_size: tuple[int, int] | None = None) -> ImageClip:
+        def middle_half(clip: ImageClip, w: int, h: int) -> ImageClip:
+            y1 = int(0.25 * h)
+            y2 = int(0.75 * h)
+            return clip.cropped(x1=0, y1=y1, x2=w, y2=y2)
+
         top_path = download_file(self.top_url)
         if final_size is not None:
             W, H = final_size
-            top = ImageClip(top_path).cropped(x1=0, y1=0, x2=W, y2=H // 2)
+            top = middle_half(ImageClip(top_path), W, H)
         else:
             top = ImageClip(top_path)
             W, H = top.size
-            top = top.cropped(x1=0, y1=0, x2=W, y2=H // 2)
+            top = middle_half(top, W, H)
 
         top = top.with_duration(self.duration)
         # load & resize bottom
         bot_path = download_file(self.bot_url)
-        bot = (
-            ImageClip(bot_path)
-            .with_duration(self.duration)
-            .cropped(x1=0, y1=0, x2=W, y2=H // 2)
-        )
+        bot = middle_half(ImageClip(bot_path).with_duration(self.duration), W, H)
         # stack vertically
         return clips_array([[top], [bot]], bg_color=(0, 0, 0)).with_duration(
             self.duration
