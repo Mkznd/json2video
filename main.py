@@ -20,7 +20,9 @@ def render_video(payload: VideoRequest, background_tasks: BackgroundTasks):
 
         try:
             create_video(payload, output_path)
+            print("Video created successfully")
             blob.upload_from_filename(output_path)
+            print("Video uploaded successfully")
             return VideoResponse(url=blob.public_url)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
