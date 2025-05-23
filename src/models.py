@@ -63,8 +63,8 @@ class SplitItem(ClipBase):
 
     def make_split_screen(self, final_size: tuple[int, int] | None = None) -> ImageClip:
         def middle_half(clip: ImageClip, w: int, h: int) -> ImageClip:
-            y1 = int(0.25 * h)
-            y2 = int(0.75 * h)
+            y1 = int(0.1 * h)
+            y2 = int(0.6 * h)
             return clip.cropped(x1=0, y1=y1, x2=w, y2=y2)
 
         top_path = download_file(self.top_url)
